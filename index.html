@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频转简谱工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .upload-section {
+            background: #f8f9ff;
+            border: 2px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+        
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .file-info {
+            margin-top: 20px;
+            color: #555;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            background: #e6fffa;
+            border-left: 4px solid #48bb78;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .editor-section {
+            margin-top: 30px;
+        }
+        
+        .editor-label {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        #jianpuEditor {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            font-size: 1.3em;
+            font-family: 'Courier New', monospace;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            resize: vertical;
+            line-height: 1.8;
+        }
+        
+        .info-box {
+            background: #fff5e6;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .info-box h3 {
+            color: #f59e0b;
+            margin-bottom: 10px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee !important;
+            border-color: #f00 !important;
+            color: #c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 音频转简谱工具</h1>
+        
+        <div class="upload-section">
+            <input type="file" id="audioFile" accept="audio/*">
+            <button class="upload-btn" onclick="document.getElementById('audioFile').click()">
+                📁 选择音频文件
+            </button>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="analyzeBtn" disabled onclick="analyzeAudio()">
+                🎼 分析并生成简谱
+            </button>
+            <button class="btn btn-success" id="saveTextBtn" disabled onclick="saveAsText()">
+                💾 保存为文本
+            </button>
+            <button class="btn btn-info" id="saveMidiBtn" disabled onclick="saveAsMidi()">
+                🎹 导出MIDI
+            </button>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在分析音频...</p>
+        </div>
+        
+        <div class="info-box">
+            <h3>使用说明</h3>
+            <p>• 支持上传MP3、WAV等常见音频格式</p>
+            <p>• 单旋律效果最佳,复杂和声可能需要手动调整</p>
+            <p>• 简谱格式: 1-7表示音高, -表示延长, 0表示休止符</p>
+            <p>• 低音用下划线标记(如 1̲), 高音用点标记(如 1̇)</p>
+            <p>• 生成后可在编辑器中手动修改,然后导出</p>
+        </div>
+        
+        <div class="editor-section">
+            <div class="editor-label">简谱编辑器:</div>
+            <textarea id="jianpuEditor" placeholder="分析完成后,简谱将显示在这里,您可以手动编辑..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let audioBuffer;
+        let currentJianpu = '';
+        
+        // 初始化
+        document.getElementById('audioFile').addEventListener('change', handleFileSelect);
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('fileInfo').textContent = `已选择: ${file.name}`;
+            document.getElementById('analyzeBtn').disabled = false;
+            
+            // 加载音频
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                audioContext.decodeAudioData(e.target.result, function(buffer) {
+                    audioBuffer = buffer;
+                    showStatus('音频加载成功!', 'success');
+                }, function(e) {
+                    showStatus('音频解码失败,请尝试其他格式', 'error');
+                    console.error('Decode error:', e);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+            if (type === 'error') {
+                status.classList.add('error');
+            } else {
+                status.classList.remove('error');
+            }
+        }
+        
+        async function analyzeAudio() {
+            if (!audioBuffer) {
+                showStatus('请先上传音频文件', 'error');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('analyzeBtn').disabled = true;
+            
+            // 使用 setTimeout 让 UI 有时间更新
+            setTimeout(() => {
+                try {
+                    const jianpu = performPitchDetection(audioBuffer);
+                    currentJianpu = jianpu;
+                    document.getElementById('jianpuEditor').value = jianpu;
+                    document.getElementById('saveTextBtn').disabled = false;
+                    document.getElementById('saveMidiBtn').disabled = false;
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('analyzeBtn').disabled = false;
+                    showStatus('简谱生成完成! 您可以在下方编辑器中修改', 'success');
+                } catch (e) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('analyzeBtn').disabled = false;
+                    showStatus('分析出错: ' + e.message, 'error');
+                    console.error('Analysis error:', e);
+                }
+            }, 100);
+        }
+        
+        function performPitchDetection(buffer) {
+            const channelData = buffer.getChannelData(0);
+            const sampleRate = buffer.sampleRate;
+            
+            // 改进的分析参数
+            const frameSize = 4096;
+            const hopSize = Math.floor(sampleRate * 0.1); // 每0.1秒分析一次
+            const notes = [];
+            
+            for (let i = 0; i < channelData.length - frameSize; i += hopSize) {
+                const frame = channelData.slice(i, i + frameSize);
+                
+                // 计算RMS能量
+                const rms = Math.sqrt(frame.reduce((sum, val) => sum + val * val, 0) / frame.length);
+                
+                if (rms > 0.02) { // 提高阈值，减少噪音
+                    const pitch = detectPitchYIN(frame, sampleRate);
+                    if (pitch > 0 && pitch < 2000) { // 有效音高范围
+                        const note = frequencyToJianpu(pitch);
+                        notes.push(note);
+                    } else {
+                        notes.push('-');
+                    }
+                } else {
+                    notes.push('0'); // 休止符
+                }
+            }
+            
+            // 清理和格式化
+            const cleaned = cleanupNotes(notes);
+            return formatJianpu(cleaned);
+        }
+        
+        // 改进的YIN算法音高检测
+        function detectPitchYIN(buffer, sampleRate) {
+            const threshold = 0.1;
+            const bufferSize = buffer.length;
+            const halfBufferSize = Math.floor(bufferSize / 2);
+            
+            const yinBuffer = new Float32Array(halfBufferSize);
+            
+            // 步骤1: 计算差分函数
+            yinBuffer[0] = 1.0;
+            let runningSum = 0;
+            
+            for (let tau = 1; tau < halfBufferSize; tau++) {
+                yinBuffer[tau] = 0;
+                for (let i = 0; i < halfBufferSize; i++) {
+                    const delta = buffer[i] - buffer[i + tau];
+                    yinBuffer[tau] += delta * delta;
+                }
+            }
+            
+            // 步骤2: 累积归一化
+            for (let tau = 1; tau < halfBufferSize; tau++) {
+                runningSum += yinBuffer[tau];
+                yinBuffer[tau] *= tau / runningSum;
+            }
+            
+            // 步骤3: 找到第一个低于阈值的点
+            let tau = 1;
+            while (tau < halfBufferSize - 1) {
+                if (yinBuffer[tau] < threshold) {
+                    while (tau + 1 < halfBufferSize && yinBuffer[tau + 1] < yinBuffer[tau]) {
+                        tau++;
+                    }
+                    break;
+                }
+                tau++;
+            }
+            
+            if (tau === halfBufferSize - 1 || yinBuffer[tau] >= threshold) {
+                return -1;
+            }
+            
+            // 步骤4: 抛物线插值
+            let betterTau = tau;
+            if (tau > 0 && tau < halfBufferSize - 1) {
+                const s0 = yinBuffer[tau - 1];
+                const s1 = yinBuffer[tau];
+                const s2 = yinBuffer[tau + 1];
+                betterTau = tau + (s2 - s0) / (2 * (2 * s1 - s2 - s0));
+            }
+            
+            return sampleRate / betterTau;
+        }
+        
+        function frequencyToJianpu(freq) {
+            // C4 = 261.63 Hz 作为基准音 (简谱的 1)
+            const C4 = 261.63;
+            
+            // 计算半音数差异
+            const semitones = 12 * Math.log2(freq / C4);
+            const roundedSemitones = Math.round(semitones);
+            
+            // 确定八度
+            const octave = Math.floor(roundedSemitones / 12);
+            const noteIndex = ((roundedSemitones % 12) + 12) % 12;
+            
+            // 半音到简谱的映射 (C大调)
+            const noteMap = [
+                '1',  // C  (0)
+                '1#', // C# (1)
+                '2',  // D  (2)
+                '2#', // D# (3)
+                '3',  // E  (4)
+                '4',  // F  (5)
+                '4#', // F# (6)
+                '5',  // G  (7)
+                '5#', // G# (8)
+                '6',  // A  (9)
+                '6#', // A# (10)
+                '7'   // B  (11)
+            ];
+            
+            let note = noteMap[noteIndex];
+            
+            // 添加八度标记
+            if (octave < 0) {
+                note = note + '̲'; // 低音点 (实际显示可能因字体而异)
+            } else if (octave > 0) {
+                note = note + '̇'; // 高音点
+            }
+            
+            return note;
+        }
+        
+        function cleanupNotes(notes) {
+            const result = [];
+            let i = 0;
+            
+            while (i < notes.length) {
+                const note = notes[i];
+                
+                // 跳过连续的休止符,只保留一个
+                if (note === '0') {
+                    result.push('0');
+                    while (i + 1 < notes.length && notes[i + 1] === '0') {
+                        i++;
+                    }
+                } 
+                // 跳过连续的延长符
+                else if (note === '-') {
+                    if (result.length > 0 && result[result.length - 1] !== '-') {
+                        result.push('-');
+                    }
+                }
+                // 普通音符
+                else {
+                    result.push(note);
+                }
+                
+                i++;
+            }
+            
+            return result;
+        }
+        
+        function formatJianpu(notes) {
+            let formatted = '// 调号: C  拍号: 4/4\n';
+            formatted += '// 建议: 生成结果可能需要手动调整节奏和音高\n\n';
+            
+            // 每行8个音符(便于阅读)
+            for (let i = 0; i < notes.length; i += 8) {
+                const line = notes.slice(i, i + 8);
+                formatted += line.join(' ') + '\n';
+            }
+            
+            return formatted;
+        }
+        
+        function saveAsText() {
+            try {
+                const content = document.getElementById('jianpuEditor').value;
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'jianpu_' + Date.now() + '.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('文本文件已保存!', 'success');
+            } catch (e) {
+                showStatus('保存失败: ' + e.message, 'error');
+                console.error('Save text error:', e);
+            }
+        }
+        
+        function saveAsMidi() {
+            try {
+                const content = document.getElementById('jianpuEditor').value;
+                const midiData = convertToMidi(content);
+                
+                if (!midiData) {
+                    throw new Error('MIDI转换失败');
+                }
+                
+                const blob = new Blob([midiData], { type: 'audio/midi' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'jianpu_' + Date.now() + '.mid';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('MIDI文件已导出! 可导入Logic Pro使用', 'success');
+            } catch (e) {
+                showStatus('MIDI导出失败: ' + e.message, 'error');
+                console.error('Save MIDI error:', e);
+            }
+        }
+        
+        function convertToMidi(jianpuText) {
+            try {
+                // 解析简谱
+                const lines = jianpuText.split('\n').filter(line => !line.startsWith('//') && line.trim());
+                const noteEvents = [];
+                let currentTime = 0;
+                const ticksPerBeat = 480;
+                const defaultDuration = ticksPerBeat; // 四分音符
+                
+                lines.forEach(line => {
+                    const symbols = line.split(/\s+/).filter(s => s);
+                    
+                    symbols.forEach(symbol => {
+                        if (symbol === '0') {
+                            // 休止符
+                            currentTime += defaultDuration;
+                        } else if (symbol === '-') {
+                            // 延长上一个音符
+                            if (noteEvents.length > 0) {
+                                noteEvents[noteEvents.length - 1].duration += defaultDuration;
+                            }
+                            currentTime += defaultDuration;
+                        } else {
+                            // 普通音符
+                            const midiNote = jianpuToMidiNote(symbol);
+                            if (midiNote >= 0 && midiNote <= 127) {
+                                noteEvents.push({
+                                    time: currentTime,
+                                    note: midiNote,
+                                    duration: defaultDuration,
+                                    velocity: 80
+                                });
+                                currentTime += defaultDuration;
+                            }
+                        }
+                    });
+                });
+                
+                if (noteEvents.length === 0) {
+                    throw new Error('没有有效的音符');
+                }
+                
+                return createMidiFile(noteEvents, ticksPerBeat);
+            } catch (e) {
+                console.error('Convert to MIDI error:', e);
+                throw e;
+            }
+        }
+        
+        function jianpuToMidiNote(symbol) {
+            // 移除所有标记,获取基础音符
+            const cleanSymbol = symbol.replace(/[̲̇̈#]/g, '').replace(/[^\d]/g, '');
+            
+            // C大调简谱到MIDI音符的映射 (中央C = 60)
+            const baseNotes = {
+                '1': 60,  // C4
+                '2': 62,  // D4
+                '3': 64,  // E4
+                '4': 65,  // F4
+                '5': 67,  // G4
+                '6': 69,  // A4
+                '7': 71   // B4
+            };
+            
+            let midiNote = baseNotes[cleanSymbol];
+            
+            if (!midiNote) {
+                return 60; // 默认返回C4
+            }
+            
+            // 处理升降号
+            if (symbol.includes('#')) {
+                midiNote += 1;
+            }
+            
+            // 处理八度
+            if (symbol.includes('̲')) {
+                midiNote -= 12; // 低八度
+            } else if (symbol.includes('̇')) {
+                midiNote += 12; // 高八度
+            } else if (symbol.includes('̈')) {
+                midiNote += 24; // 超高八度
+            }
+            
+            // 确保在有效范围内
+            return Math.max(0, Math.min(127, midiNote));
+        }
+        
+        function createMidiFile(noteEvents, ticksPerBeat) {
+            // MIDI文件头
+            const header = [
+                0x4D, 0x54, 0x68, 0x64, // "MThd"
+                0x00, 0x00, 0x00, 0x06, // 头部长度
+                0x00, 0x00,             // 格式0
+                0x00, 0x01,             // 1个音轨
+                (ticksPerBeat >> 8) & 0xFF, ticksPerBeat & 0xFF  // 每拍的tick数
+            ];
+            
+            // 创建音轨数据
+            const trackEvents = [];
+            
+            // 设置速度 (120 BPM)
+            trackEvents.push(0x00, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20);
+            
+            // 添加音符事件
+            let lastTime = 0;
+            noteEvents.forEach(event => {
+                const deltaTime = event.time - lastTime;
+                const dtBytes = encodeVariableLength(deltaTime);
+                
+                // Note On
+                trackEvents.push(...dtBytes, 0x90, event.note, event.velocity);
+                
+                // Note Off
+                const durationBytes = encodeVariableLength(event.duration);
+                trackEvents.push(...durationBytes, 0x80, event.note, 0x40);
+                
+                lastTime = event.time + event.duration;
+            });
+            
+            // 音轨结束标记
+            trackEvents.push(0x00, 0xFF, 0x2F, 0x00);
+            
+            // 音轨头
+            const trackHeader = [
+                0x4D, 0x54, 0x72, 0x6B, // "MTrk"
+                (trackEvents.length >> 24) & 0xFF,
+                (trackEvents.length >> 16) & 0xFF,
+                (trackEvents.length >> 8) & 0xFF,
+                trackEvents.length & 0xFF
+            ];
+            
+            // 组合完整的MIDI文件
+            return new Uint8Array([...header, ...trackHeader, ...trackEvents]);
+        }
+        
+        function encodeVariableLength(value) {
+            const bytes = [];
+            bytes.push(value & 0x7F);
+            value = value >> 7;
+            
+            while (value > 0) {
+                bytes.unshift((value & 0x7F) | 0x80);
+                value = value >> 7;
+            }
+            
+            return bytes;
+        }
+    </script>
+</body>
+</html>
