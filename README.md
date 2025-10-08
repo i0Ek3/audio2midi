@@ -14,4 +14,10 @@ Transform audio into MIDI.
 ## Todo
 
 - The generated single notes in the numbered musical notation are elongated
+- Use a more standard numbered musical notation
 
+
+
+## Credit
+
+Claude Sonnet 4.5.
