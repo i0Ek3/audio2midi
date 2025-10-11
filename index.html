@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>音频转简谱工具</title>
-    <style>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>音频转简谱工具</title>
+        <style>
         * {
             margin: 0;
             padding: 0;
@@ -104,6 +104,11 @@
             color: white;
         }
         
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
         .btn-info {
             background: #4299e1;
             color: white;
@@ -127,6 +132,12 @@
             margin-bottom: 20px;
             border-radius: 8px;
             display: none;
+        }
+        
+        .status.error {
+            background: #fee;
+            border-color: #f00;
+            color: #c00;
         }
         
         .editor-section {
@@ -185,67 +196,299 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .error {
-            background: #fee !important;
-            border-color: #f00 !important;
-            color: #c00;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎵 音频转简谱工具</h1>
-        
-        <div class="upload-section">
-            <input type="file" id="audioFile" accept="audio/*">
-            <button class="upload-btn" onclick="document.getElementById('audioFile').click()">
-                📁 选择音频文件
-            </button>
-            <div class="file-info" id="fileInfo"></div>
-        </div>
-        
-        <div class="controls">
-            <button class="btn btn-primary" id="analyzeBtn" disabled onclick="analyzeAudio()">
-                🎼 分析并生成简谱
-            </button>
-            <button class="btn btn-success" id="saveTextBtn" disabled onclick="saveAsText()">
-                💾 保存为文本
-            </button>
-            <button class="btn btn-info" id="saveMidiBtn" disabled onclick="saveAsMidi()">
-                🎹 导出MIDI
-            </button>
-        </div>
-        
-        <div class="status" id="status"></div>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>正在分析音频...</p>
-        </div>
-        
-        <div class="info-box">
-            <h3>使用说明</h3>
-            <p>• 支持上传MP3、WAV等常见音频格式</p>
-            <p>• 单旋律效果最佳,复杂和声可能需要手动调整</p>
-            <p>• 简谱格式: 1-7表示音高, -表示延长, 0表示休止符</p>
-            <p>• 低音用下划线标记(如 1̲), 高音用点标记(如 1̇)</p>
-            <p>• 生成后可在编辑器中手动修改,然后导出</p>
-        </div>
-        
-        <div class="editor-section">
-            <div class="editor-label">简谱编辑器:</div>
-            <textarea id="jianpuEditor" placeholder="分析完成后,简谱将显示在这里,您可以手动编辑..."></textarea>
-        </div>
-    </div>
 
-    <script>
+        .code-box {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎵 音频转简谱工具</h1>
+            <div class="upload-section">
+                <input type="file" id="audioFile" accept="audio/*">
+                <button class="upload-btn" onclick="document.getElementById('audioFile').click()">
+                    📁 选择音频文件
+                </button>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+            <div class="controls">
+                <button
+                    class="btn btn-primary"
+                    id="analyzeBtn"
+                    disabled
+                    onclick="analyzeAudio()"
+                >
+                    🎼 分析并生成简谱
+                </button>
+                <button
+                    class="btn btn-success"
+                    id="playBtn"
+                    disabled
+                    onclick="playJianpu()"
+                >
+                    ▶️ 播放简谱
+                </button>
+                <button
+                    class="btn btn-success"
+                    id="stopBtn"
+                    disabled
+                    onclick="stopJianpu()"
+                    style="background: #f56565;"
+                >
+                    ⏹️ 停止播放
+                </button>
+                <button
+                    class="btn btn-success"
+                    id="saveTextBtn"
+                    disabled
+                    onclick="saveAsText()"
+                >
+                    💾 保存为文本
+                </button>
+                <button
+                    class="btn btn-info"
+                    id="saveMidiBtn"
+                    disabled
+                    onclick="saveAsMidi()"
+                >
+                    🎹 导出MIDI
+                </button>
+            </div>
+            <div class="status" id="status"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在分析音频...</p>
+            </div>
+            <div class="info-box">
+                <h3>使用说明</h3>
+                <p>• 支持上传MP3、WAV等常见音频格式</p>
+                <p>• 单旋律效果最佳,复杂和声可能需要手动调整</p>
+                <p>• 简谱格式: 1-7表示音高, -表示延长, 0表示休止符</p>
+                <p>• 低音用下划线标记(如 1̲), 高音用点标记(如 1̇)</p>
+                <p>• 生成后可在编辑器中手动修改,然后导出</p>
+            </div>
+            <div class="editor-section">
+                <div class="editor-label">简谱编辑器:</div>
+                <textarea id="jianpuEditor" placeholder="分析完成后,简谱将显示在这里,您可以手动编辑..."></textarea>
+            </div>
+        </div>
+        
+        <script>
         let audioContext;
         let audioBuffer;
         let currentJianpu = '';
+        let isPlaying = false;
+        let playbackNodes = [];
+
+        // ================== 核心播放函数 ==================
+        
+        // 1. 主播放函数 - playJianpu()
+        function playJianpu() {
+            console.log('playJianpu 函数被调用');
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        playJianpuInternal();
+                    });
+                } else {
+                    playJianpuInternal();
+                }
+            } catch (e) {
+                showStatus('播放失败: ' + e.message, 'error');
+                console.error('playJianpu 错误:', e);
+            }
+        }
+
+        // 2. 内部播放逻辑 - playJianpuInternal()
+        function playJianpuInternal() {
+            console.log('playJianpuInternal 被调用');
+            try {
+                const content = document.getElementById('jianpuEditor').value;
+                if (!content || !content.trim()) {
+                    showStatus('请先生成简谱', 'error');
+                    return;
+                }
+                
+                const noteEvents = parseJianpuToNotes(content);
+                if (!noteEvents || noteEvents.length === 0) {
+                    showStatus('没有有效的音符可以播放', 'error');
+                    return;
+                }
+                
+                console.log('开始播放，共 ' + noteEvents.length + ' 个音符');
+                
+                isPlaying = true;
+                document.getElementById('playBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                playbackNodes = [];
+                
+                const bpm = 120;
+                const beatDuration = 60 / bpm;
+                const startTime = audioContext.currentTime + 0.1;
+                
+                noteEvents.forEach((event, index) => {
+                    const noteStartTime = startTime + event.time * beatDuration;
+                    const duration = Math.max(0.05, event.duration * beatDuration);
+                    
+                    if (event.note > 0) {
+                        const delayMs = Math.max(0, (noteStartTime - audioContext.currentTime) * 1000);
+                        setTimeout(() => {
+                            if (isPlaying) {
+                                console.log('播放音符: ' + index);
+                                scheduleNote(event.note, audioContext.currentTime, duration, event.velocity);
+                            }
+                        }, delayMs);
+                    }
+                });
+                
+                const totalDuration = Math.max(...noteEvents.map(e => (e.time + e.duration) * beatDuration));
+                setTimeout(() => {
+                    if (isPlaying) {
+                        stopJianpu();
+                    }
+                }, (totalDuration + 0.5) * 1000);
+                
+                showStatus('正在播放简谱...', 'success');
+            } catch (e) {
+                showStatus('播放失败: ' + e.message, 'error');
+                console.error('playJianpuInternal 错误:', e);
+            }
+        }
+
+        // 3. 音符合成函数 - scheduleNote()
+        function scheduleNote(midiNote, startTime, duration, velocity) {
+            try {
+                const frequency = 440 * Math.pow(2, (midiNote - 69) / 12);
+                const volume = velocity / 127 * 0.2;
+                
+                const oscillator = audioContext.createOscillator();
+                const envelope = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                const now = audioContext.currentTime;
+                envelope.gain.setValueAtTime(0, now);
+                envelope.gain.linearRampToValueAtTime(volume, now + 0.01);
+                
+                if (duration > 0.1) {
+                    envelope.gain.exponentialRampToValueAtTime(volume * 0.5, now + duration - 0.05);
+                }
+                
+                envelope.gain.linearRampToValueAtTime(0, now + duration);
+                
+                oscillator.connect(envelope);
+                envelope.connect(audioContext.destination);
+                
+                oscillator.start(now);
+                oscillator.stop(now + duration);
+                
+                playbackNodes.push(oscillator);
+                playbackNodes.push(envelope);
+                
+                console.log('播放: MIDI ' + midiNote + ' (' + frequency.toFixed(2) + 'Hz), 时长 ' + duration.toFixed(3) + 's');
+            } catch (e) {
+                console.error('scheduleNote 错误:', e);
+            }
+        }
+
+        // 4. 停止播放函数 - stopJianpu()
+        function stopJianpu() {
+            console.log('stopJianpu 被调用');
+            try {
+                if (isPlaying) {
+                    playbackNodes.forEach((node) => {
+                        try {
+                            node.stop(audioContext.currentTime);
+                        } catch (e) {
+                            console.log('节点已停止');
+                        }
+                    });
+                    playbackNodes = [];
+                }
+                
+                isPlaying = false;
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                showStatus('播放已停止', 'success');
+            } catch (e) {
+                console.error('stopJianpu 错误:', e);
+            }
+        }
+
+        // 5. 简谱解析函数 - parseJianpuToNotes()
+        function parseJianpuToNotes(content) {
+            console.log('parseJianpuToNotes 被调用');
+            const mapping = {
+                '1': 60, '2': 62, '3': 64, '4': 65, '5': 67, '6': 69, '7': 71,
+            };
+
+            const tokens = content
+                .replace(/\|/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .split(' ');
+
+            const result = [];
+            let time = 0;
+            for (let token of tokens) {
+                if (!token) continue;
+
+                let duration = 1;
+                let velocity = 100;
+                let note = 0;
+
+                // 检查是否为休止符
+                if (token.includes('0')) {
+                    note = 0;
+                } else {
+                    // 去除非音符符号
+                    const base = token.match(/[1-7]/);
+                    if (!base) continue;
+                    note = mapping[base[0]];
+
+                    // 处理八度标记
+                    const upCount = (token.match(/·/g) || []).length;
+                    const downCount = (token.match(/,/g) || []).length;
+                    note += (upCount * 12) - (downCount * 12);
+                }
+
+                // 延长符 “-”
+                if (token.includes('-')) duration *= 2;
+
+                result.push({ note, time, duration, velocity });
+                time += duration;
+            }
+
+            console.log('解析结果:', result);
+            return result;
+        }
+
+        // 6. 状态显示函数（示例）
+        function showStatus(msg, type) {
+            console.log(`[${type}] ${msg}`);
+        }
         
         // 初始化
         document.getElementById('audioFile').addEventListener('change', handleFileSelect);
+        document.getElementById('jianpuEditor').addEventListener('input', function() {
+            // 当编辑器有内容时，启用播放按钮
+            if (this.value.trim().length > 0) {
+                document.getElementById('playBtn').disabled = false;
+            }
+        });
         
         function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -299,9 +542,11 @@
                     document.getElementById('jianpuEditor').value = jianpu;
                     document.getElementById('saveTextBtn').disabled = false;
                     document.getElementById('saveMidiBtn').disabled = false;
+                    document.getElementById('playBtn').disabled = false;
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('analyzeBtn').disabled = false;
                     showStatus('简谱生成完成! 您可以在下方编辑器中修改', 'success');
+                    console.log('简谱已生成，内容长度: ' + jianpu.length);
                 } catch (e) {
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('analyzeBtn').disabled = false;
@@ -315,10 +560,11 @@
             const channelData = buffer.getChannelData(0);
             const sampleRate = buffer.sampleRate;
             
-            // 改进的分析参数
+            // 改进的分析参数 - 关键修复：使用更大的 hopSize
             const frameSize = 4096;
-            const hopSize = Math.floor(sampleRate * 0.1); // 每0.1秒分析一次
+            const hopSize = Math.floor(sampleRate * 0.25); // 每0.25秒分析一次（之前0.1秒导致重复）
             const notes = [];
+            const pitches = [];
             
             for (let i = 0; i < channelData.length - frameSize; i += hopSize) {
                 const frame = channelData.slice(i, i + frameSize);
@@ -329,19 +575,53 @@
                 if (rms > 0.02) { // 提高阈值，减少噪音
                     const pitch = detectPitchYIN(frame, sampleRate);
                     if (pitch > 0 && pitch < 2000) { // 有效音高范围
-                        const note = frequencyToJianpu(pitch);
-                        notes.push(note);
+                        pitches.push({ pitch: pitch, rms: rms });
                     } else {
-                        notes.push('-');
+                        pitches.push({ pitch: -1, rms: rms });
                     }
                 } else {
-                    notes.push('0'); // 休止符
+                    pitches.push({ pitch: -1, rms: rms }); // 休止符
                 }
             }
             
+            // 使用更智能的音符分组方法 - 检测音高变化
+            const notes_grouped = groupNotesByChange(pitches);
+            
             // 清理和格式化
-            const cleaned = cleanupNotes(notes);
+            const cleaned = cleanupNotes(notes_grouped);
             return formatJianpu(cleaned);
+        }
+        
+        function groupNotesByChange(pitches) {
+            if (pitches.length === 0) return [];
+            
+            const notes = [];
+            let currentNote = null;
+            let lastPitch = null;
+            const pitchThreshold = 50; // 频率变化50Hz以上才认为是不同音符
+            
+            for (let i = 0; i < pitches.length; i++) {
+                const { pitch, rms } = pitches[i];
+                
+                // 判断是否是休止符
+                if (rms < 0.02 || pitch < 0) {
+                    if (currentNote !== '0') {
+                        notes.push('0');
+                        currentNote = '0';
+                    }
+                    lastPitch = null;
+                } 
+                // 判断是否是新的音符（音高变化超过阈值）
+                else if (lastPitch === null || Math.abs(pitch - lastPitch) > pitchThreshold) {
+                    const note = frequencyToJianpu(pitch);
+                    notes.push(note);
+                    currentNote = note;
+                    lastPitch = pitch;
+                }
+                // 否则是同一个音符的延续，不添加
+            }
+            
+            return notes;
         }
         
         // 改进的YIN算法音高检测
@@ -674,6 +954,6 @@
             
             return bytes;
         }
-    </script>
-</body>
+        </script>
+    </body>
 </html>
